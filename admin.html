@@ -319,6 +319,8 @@ let zonasCache = [];
 let testimoniosCache = [];
 let fotosFormulario = [];
 
+const CATEGORIAS_ORDEN = ['Desayuno sorpresa', 'Frutas expresiva', 'Rosas', 'Detalles', 'Adicionales'];
+
 const CATEGORIA_OCASIONES = {
   'Desayuno sorpresa': ['Cumpleaños, aniversario y otros'],
   'Frutas expresiva': ['Bandeja de frutas', 'Frutas y rosas', 'Fresas con rosas', 'Fresas con tortas'],
@@ -457,13 +459,29 @@ function miniaturaDeVideo(url) {
 
 function renderTabla() {
   const body = document.getElementById('tabla-body');
-  const filtradas = cestasCache.filter(c => c.pais === mercadoActivo);
+  const filtradas = cestasCache
+    .filter(c => c.pais === mercadoActivo)
+    .slice()
+    .sort((a, b) => {
+      const iA = CATEGORIAS_ORDEN.indexOf(a.categoria);
+      const iB = CATEGORIAS_ORDEN.indexOf(b.categoria);
+      const ordenA = iA === -1 ? CATEGORIAS_ORDEN.length : iA;
+      const ordenB = iB === -1 ? CATEGORIAS_ORDEN.length : iB;
+      if (ordenA !== ordenB) return ordenA - ordenB;
+      return a.nombre.localeCompare(b.nombre);
+    });
   const simbolo = mercadoActivo === 'CO' ? '$' : '£';
 
-  body.innerHTML = filtradas.map(c => {
+  let categoriaAnterior = null;
+  const filas = filtradas.map(c => {
     const portada = c.fotos[0];
     const imgPortada = portada ? (esVideo(portada) ? miniaturaDeVideo(portada) : portada) : null;
-    return `
+    let encabezado = '';
+    if (c.categoria !== categoriaAnterior) {
+      categoriaAnterior = c.categoria;
+      encabezado = `<tr><td colspan="6" style="background:var(--morado-claro); color:var(--morado-oscuro); font-weight:bold; padding:8px 10px;">${c.categoria}</td></tr>`;
+    }
+    return encabezado + `
     <tr>
       <td>${imgPortada ? `<img src="${imgPortada}">` : '—'}</td>
       <td>${c.nombre} ${c.temporada ? '🗓️' : ''} ${c.estrella ? '⭐' : ''}</td>
@@ -477,6 +495,8 @@ function renderTabla() {
     </tr>
   `;
   }).join('');
+
+  body.innerHTML = filas;
 }
 
 function renderPhotoPicker() {
