@@ -363,6 +363,7 @@
   </div>
 </div>
 
+
 <div class="tab-content" id="tab-contact">
   <p id="contact-text">Message us directly on WhatsApp to place an order or ask about custom baskets.</p>
   <a class="whatsapp-btn" id="contact-whatsapp" href="#" target="_blank">WhatsApp Us</a>
@@ -874,6 +875,9 @@ async function cargarTestimonios() {
         tipo: f.tipo ? f.tipo.stringValue : (f.audioUrl ? 'audio' : 'texto'),
         nombreCliente: f.nombreCliente ? f.nombreCliente.stringValue : '',
         aprobado: f.aprobado ? f.aprobado.booleanValue : true,
+        // Los testimonios creados antes de existir el sistema de calificación
+        // no tienen este campo guardado; como ya fueron aprobados, se asumen
+        // como 5 estrellas por defecto.
         calificacion: f.calificacion ? parseInt(f.calificacion.integerValue, 10) : 5,
       };
     }).filter(t => t.aprobado);
@@ -961,6 +965,8 @@ function renderTestimoniosPublico() {
     </div>
   `).join('');
 }
+
+
 
 let mediaRecorderTestimonio = null;
 let audioChunksTestimonio = [];
@@ -1358,7 +1364,7 @@ function renderCarrusel() {
 
   track.innerHTML = carruselFotos.map((url, i) =>
     esVideo(url)
-      ? `<video src="${url}" controls playsinline preload="metadata"></video>`
+      ? `<video src="${url}" controls playsinline preload="metadata" autoplay onended="avanzarCarruselAuto()"></video>`
       : `<img src="${url}" alt="" onclick="abrirLightbox(${i})">`
   ).join('');
   track.style.transform = `translateX(-${carruselIndex * 100}%)`;
@@ -1377,15 +1383,28 @@ let carruselAutoInterval = null;
 function iniciarCarruselAuto() {
   detenerCarruselAuto();
   if (carruselFotos.length <= 1) return;
-  carruselAutoInterval = setInterval(() => {
-    carruselIndex = (carruselIndex + 1) % carruselFotos.length;
-    renderCarrusel();
-  }, 2000);
+
+  const actual = carruselFotos[carruselIndex];
+  if (esVideo(actual)) {
+    // Es un video: se reproduce solo y el carrusel avanza cuando termine
+    // (evento "onended" en el <video>) o cuando el usuario navegue manualmente.
+    // No se programa ningún avance automático por tiempo.
+    return;
+  }
+
+  // Es una foto: avanza sola a los 2 segundos.
+  carruselAutoInterval = setTimeout(avanzarCarruselAuto, 2000);
+}
+
+function avanzarCarruselAuto() {
+  carruselIndex = (carruselIndex + 1) % carruselFotos.length;
+  renderCarrusel();
+  iniciarCarruselAuto();
 }
 
 function detenerCarruselAuto() {
   if (carruselAutoInterval) {
-    clearInterval(carruselAutoInterval);
+    clearTimeout(carruselAutoInterval);
     carruselAutoInterval = null;
   }
 }
@@ -1828,3 +1847,4 @@ async function compartir() {
 </script>
 </body>
 </html>
+
